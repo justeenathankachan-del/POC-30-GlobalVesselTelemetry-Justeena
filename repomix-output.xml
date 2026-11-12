@@ -1,0 +1,1083 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  favicon.ico
+  globals.css
+  layout.tsx
+  page.tsx
+  PortCongestionMap.tsx
+  portsData.ts
+public/
+  file.svg
+  globe.svg
+  next.svg
+  vercel.svg
+  window.svg
+.gitignore
+AGENTS.md
+eslint.config.mjs
+next.config.ts
+package.json
+README.md
+tsconfig.json
+UAT_CHECKLIST.md
+VAR_REPORT.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/PortCongestionMap.tsx">
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { PortFacility } from './portsData';
+
+interface PortCongestionMapProps {
+  ports: PortFacility[];
+}
+
+export default function PortCongestionMap({ ports }: PortCongestionMapProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="w-full h-[430px] bg-[#0B1117] border border-slate-800 rounded-xl flex items-center justify-center text-slate-400 text-sm font-mono">
+        Initializing Global AIS Maritime Telemetry Layer...
+      </div>
+    );
+  }
+
+  const getMarkerColor = (status: PortFacility['status']) => {
+    if (status === 'Severe Congestion') return '#F43F5E'; // Rose/Red
+    if (status === 'Moderate Delay') return '#F59E0B'; // Amber
+    return '#38BDF8'; // Electric Cyan
+  };
+
+  return (
+    <div className="w-full h-[430px] rounded-xl overflow-hidden border border-slate-800 relative z-0">
+      <MapContainer
+        center={[18, 25]}
+        zoom={2}
+        minZoom={2}
+        scrollWheelZoom={true}
+        className="w-full h-full bg-[#030712]"
+      >
+        {/* Native Dark Basemap with English-Only Labels (No API Key Required) */}
+        <TileLayer
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+        />
+        <TileLayer
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+          attribution=''
+        />
+
+        {ports.map((port) => {
+          const color = getMarkerColor(port.status);
+          const radius = Math.max(9, Math.min(20, port.activeVessels / 16));
+
+          return (
+            <CircleMarker
+              key={port.id}
+              center={[port.lat, port.lng]}
+              radius={radius}
+              pathOptions={{
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.75,
+                weight: 2.5,
+              }}
+            >
+              <Popup>
+                <div className="min-w-[220px] text-slate-900 font-sans p-1">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    {port.id} • {port.corridor}
+                  </div>
+                  <div className="text-sm font-bold text-slate-950 mt-0.5">
+                    {port.name}
+                  </div>
+                  <div className="text-xs text-slate-600 mb-2">{port.country}</div>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-xs border-t border-slate-200 pt-2">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Active Vessels</span>
+                      <span className="font-mono font-bold">{port.activeVessels}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Anchored Queue</span>
+                      <span className="font-mono font-bold text-rose-600">
+                        {port.anchoredQueue} ships
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Avg Dwell Time</span>
+                      <span className="font-mono font-bold">{port.avgDwellHours} hrs</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Congestion Index</span>
+                      <span className="font-mono font-bold">{port.congestionIndex}/100</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Primary Class:</span>
+                    <span className="font-semibold">{port.dominantVesselClass}</span>
+                  </div>
+                </div>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
+}
+</file>
+
+<file path="app/portsData.ts">
+export type VesselClass = 'Container' | 'Bulk Carrier' | 'Tanker' | 'Ro-Ro';
+export type MaritimeCorridor = 'Asia-Pacific' | 'Europe-Med' | 'North America' | 'Middle East';
+export type CongestionStatus = 'Severe Congestion' | 'Moderate Delay' | 'Normal Flow';
+
+export interface PortFacility {
+  id: string;
+  name: string;
+  country: string;
+  corridor: MaritimeCorridor;
+  lat: number;
+  lng: number;
+  activeVessels: number;
+  anchoredQueue: number;
+  avgDwellHours: number;
+  congestionIndex: number;
+  status: CongestionStatus;
+  dominantVesselClass: VesselClass;
+  annualTeuMillions: number;
+}
+
+export const PORTS_DATA: PortFacility[] = [
+  {
+    id: 'CNSHA',
+    name: 'Port of Shanghai (Yangshan)',
+    country: 'China',
+    corridor: 'Asia-Pacific',
+    lat: 30.6265,
+    lng: 122.065,
+    activeVessels: 342,
+    anchoredQueue: 68,
+    avgDwellHours: 64.5,
+    congestionIndex: 88,
+    status: 'Severe Congestion',
+    dominantVesselClass: 'Container',
+    annualTeuMillions: 49.1,
+  },
+  {
+    id: 'SGSIN',
+    name: 'Port of Singapore (Tuas)',
+    country: 'Singapore',
+    corridor: 'Asia-Pacific',
+    lat: 1.2644,
+    lng: 103.822,
+    activeVessels: 295,
+    anchoredQueue: 49,
+    avgDwellHours: 52.0,
+    congestionIndex: 81,
+    status: 'Severe Congestion',
+    dominantVesselClass: 'Container',
+    annualTeuMillions: 39.0,
+  },
+  {
+    id: 'NLRTM',
+    name: 'Port of Rotterdam (Maasvlakte)',
+    country: 'Netherlands',
+    corridor: 'Europe-Med',
+    lat: 51.955,
+    lng: 4.132,
+    activeVessels: 184,
+    anchoredQueue: 22,
+    avgDwellHours: 36.4,
+    congestionIndex: 62,
+    status: 'Moderate Delay',
+    dominantVesselClass: 'Tanker',
+    annualTeuMillions: 13.4,
+  },
+  {
+    id: 'USLAX',
+    name: 'Port of Los Angeles / Long Beach',
+    country: 'United States',
+    corridor: 'North America',
+    lat: 33.7361,
+    lng: -118.2622,
+    activeVessels: 162,
+    anchoredQueue: 34,
+    avgDwellHours: 58.2,
+    congestionIndex: 79,
+    status: 'Severe Congestion',
+    dominantVesselClass: 'Container',
+    annualTeuMillions: 17.6,
+  },
+  {
+    id: 'AEJEA',
+    name: 'Port of Jebel Ali (Dubai)',
+    country: 'UAE',
+    corridor: 'Middle East',
+    lat: 24.9857,
+    lng: 55.0273,
+    activeVessels: 138,
+    anchoredQueue: 14,
+    avgDwellHours: 24.8,
+    congestionIndex: 44,
+    status: 'Normal Flow',
+    dominantVesselClass: 'Container',
+    annualTeuMillions: 14.5,
+  },
+  {
+    id: 'KRPUS',
+    name: 'Port of Busan (New Port)',
+    country: 'South Korea',
+    corridor: 'Asia-Pacific',
+    lat: 35.0758,
+    lng: 128.8147,
+    activeVessels: 210,
+    anchoredQueue: 27,
+    avgDwellHours: 39.1,
+    congestionIndex: 65,
+    status: 'Moderate Delay',
+    dominantVesselClass: 'Container',
+    annualTeuMillions: 23.1,
+  },
+  {
+    id: 'BEANR',
+    name: 'Port of Antwerp-Bruges',
+    country: 'Belgium',
+    corridor: 'Europe-Med',
+    lat: 51.2689,
+    lng: 4.3422,
+    activeVessels: 151,
+    anchoredQueue: 19,
+    avgDwellHours: 33.7,
+    congestionIndex: 58,
+    status: 'Moderate Delay',
+    dominantVesselClass: 'Ro-Ro',
+    annualTeuMillions: 12.5,
+  },
+  {
+    id: 'USSAV',
+    name: 'Port of Savannah (Garden City)',
+    country: 'United States',
+    corridor: 'North America',
+    lat: 32.1285,
+    lng: -81.1517,
+    activeVessels: 96,
+    anchoredQueue: 11,
+    avgDwellHours: 27.5,
+    congestionIndex: 48,
+    status: 'Normal Flow',
+    dominantVesselClass: 'Bulk Carrier',
+    annualTeuMillions: 5.4,
+  },
+  {
+    id: 'SAJED',
+    name: 'Jeddah Islamic Port',
+    country: 'Saudi Arabia',
+    corridor: 'Middle East',
+    lat: 21.4858,
+    lng: 39.1667,
+    activeVessels: 112,
+    anchoredQueue: 25,
+    avgDwellHours: 46.0,
+    congestionIndex: 72,
+    status: 'Moderate Delay',
+    dominantVesselClass: 'Tanker',
+    annualTeuMillions: 5.6,
+  },
+  {
+    id: 'BRSSZ',
+    name: 'Port of Santos',
+    country: 'Brazil',
+    corridor: 'North America',
+    lat: -23.9618,
+    lng: -46.3225,
+    activeVessels: 119,
+    anchoredQueue: 29,
+    avgDwellHours: 49.3,
+    congestionIndex: 74,
+    status: 'Moderate Delay',
+    dominantVesselClass: 'Bulk Carrier',
+    annualTeuMillions: 4.8,
+  },
+  {
+    id: 'DEHAM',
+    name: 'Port of Hamburg',
+    country: 'Germany',
+    corridor: 'Europe-Med',
+    lat: 53.5294,
+    lng: 9.9611,
+    activeVessels: 127,
+    anchoredQueue: 12,
+    avgDwellHours: 26.2,
+    congestionIndex: 45,
+    status: 'Normal Flow',
+    dominantVesselClass: 'Ro-Ro',
+    annualTeuMillions: 7.7,
+  },
+  {
+    id: 'INNSA',
+    name: 'Jawaharlal Nehru Port (Nhava Sheva)',
+    country: 'India',
+    corridor: 'Asia-Pacific',
+    lat: 18.9499,
+    lng: 72.9512,
+    activeVessels: 144,
+    anchoredQueue: 18,
+    avgDwellHours: 31.4,
+    congestionIndex: 55,
+    status: 'Normal Flow',
+    dominantVesselClass: 'Container',
+    annualTeuMillions: 6.4,
+  },
+];
+
+export const VESSEL_MIX_SHARE = [
+  { label: 'Container Ships (ULCV / Feeder)', share: 48, color: 'bg-sky-400' },
+  { label: 'Dry Bulk Carriers (Capesize / Panamax)', share: 24, color: 'bg-amber-400' },
+  { label: 'Crude & LNG Tankers', share: 18, color: 'bg-emerald-400' },
+  { label: 'Ro-Ro & Vehicle Carriers', share: 10, color: 'bg-purple-400' },
+];
+
+export const MARITIME_EVENTS = [
+  {
+    id: 'EVT-901',
+    time: '14 mins ago',
+    port: 'Port of Shanghai (Yangshan)',
+    type: 'Anchorage Queue Surge',
+    detail: '68 vessels waiting outside outer fairway due to dense fog advisory.',
+    severity: 'high',
+  },
+  {
+    id: 'EVT-902',
+    time: '42 mins ago',
+    port: 'Port of Singapore (Tuas)',
+    type: 'Bunkering & Berth Reallocation',
+    detail: 'Automated cranes diverted to Berths 14–19 to clear Asia-Europe feeder backlog.',
+    severity: 'high',
+  },
+  {
+    id: 'EVT-903',
+    time: '2 hrs ago',
+    port: 'Port of Rotterdam',
+    type: 'Customs Fast-Track Active',
+    detail: 'Digital manifest clearance reduced LNG tanker dwell time by 4.2 hours.',
+    severity: 'normal',
+  },
+  {
+    id: 'EVT-904',
+    time: '5 hrs ago',
+    port: 'Port of Los Angeles',
+    type: 'Rail Intermodal Dispatch',
+    detail: '34 container vessels scheduled for night-shift gantry crane unloading.',
+    severity: 'medium',
+  },
+];
+</file>
+
+<file path="UAT_CHECKLIST.md">
+# User Acceptance Testing (UAT) Checklist — POC-30
+
+**PoC ID:** POC-30  
+**PoC Title:** Global Vessel Telemetry & Port Congestion Monitor  
+**Developer:** Justeena Thankachan  
+**Status:** PASS  
+
+## Test Matrix
+- [x] **Application Build:** Compiles cleanly with zero TypeScript or Turbopack errors.
+- [x] **Map Rendering:** All 12 global port hubs render with proportional vessel-volume radii.
+- [x] **Interactive Popups:** Clicking any port node displays Active Vessels, Anchored Queue, Avg Dwell Time, Congestion Index, and Dominant Vessel Class.
+- [x] **Corridor Filter:** Filtering by Maritime Trade Corridor dynamically updates KPI cards and map markers.
+- [x] **Vessel Class Filter:** Filtering by Dominant Vessel Class recalculates active vessels and average dwell metrics accurately.
+- [x] **CSV Export:** Clicking "Download Sample Data (CSV)" exports the filtered dataset cleanly.
+- [x] **Responsive Layout:** Adapts cleanly across desktop and mobile viewports.
+-
+</file>
+
+<file path="VAR_REPORT.md">
+# Visual & Aesthetic Review (VAR) Report — POC-30
+
+**PoC ID:** POC-30  
+**PoC Title:** Global Vessel Telemetry & Port Congestion Monitor  
+**Developer:** Justeena Thankachan  
+**Status:** PASS  
+
+## Visual Identity & Layout
+- **Theme:** Obsidian Dark (`#030712` primary canvas, `#0B1117` elevated panels, `#38BDF8` Electric Cyan accents).
+- **Layout Ratio:** Strict 70/30 Data-to-Intelligence split on desktop (`lg:col-span-8` / `lg:col-span-4`).
+- **Status Color Encoding:** Rose (`#F43F5E`) for Severe Congestion, Amber (`#F59E0B`) for Moderate Delay, and Cyan (`#38BDF8`) for Normal Flow.
+- **Typography:** High-contrast sans-serif headers paired with monospace numerical KPIs.
+
+## Issues Identified & Resolved
+- Prevented Leaflet SSR hydration mismatches via dynamic client-side loading (`ssr: false`) and mount guards.
+- Configured native dark Esri basemap tiles with English-only labels and zero third-party API watermarks.
+-
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/page.tsx">
+'use client';
+
+import React, { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import {
+  Ship,
+  Anchor,
+  Clock,
+  AlertTriangle,
+  Download,
+  Globe,
+  ShieldCheck,
+  Activity,
+  Navigation,
+} from 'lucide-react';
+import {
+  PORTS_DATA,
+  VESSEL_MIX_SHARE,
+  MARITIME_EVENTS,
+  VesselClass,
+  MaritimeCorridor,
+} from './portsData';
+
+const PortCongestionMap = dynamic(() => import('./PortCongestionMap'), {
+  ssr: false,
+});
+
+export default function GlobalVesselTelemetryDashboard() {
+  const [selectedCorridor, setSelectedCorridor] = useState<string>('All');
+  const [selectedVesselClass, setSelectedVesselClass] = useState<string>('All');
+
+  const filteredPorts = useMemo(() => {
+    return PORTS_DATA.filter((port) => {
+      const corridorMatch =
+        selectedCorridor === 'All' || port.corridor === (selectedCorridor as MaritimeCorridor);
+      const classMatch =
+        selectedVesselClass === 'All' ||
+        port.dominantVesselClass === (selectedVesselClass as VesselClass);
+      return corridorMatch && classMatch;
+    });
+  }, [selectedCorridor, selectedVesselClass]);
+
+  const metrics = useMemo(() => {
+    if (filteredPorts.length === 0) {
+      return { totalVessels: 0, totalQueued: 0, avgDwell: '0.0', avgCongestion: 0 };
+    }
+    const totalVessels = filteredPorts.reduce((acc, p) => acc + p.activeVessels, 0);
+    const totalQueued = filteredPorts.reduce((acc, p) => acc + p.anchoredQueue, 0);
+    const avgDwell = (
+      filteredPorts.reduce((acc, p) => acc + p.avgDwellHours, 0) / filteredPorts.length
+    ).toFixed(1);
+    const avgCongestion = Math.round(
+      filteredPorts.reduce((acc, p) => acc + p.congestionIndex, 0) / filteredPorts.length
+    );
+
+    return { totalVessels, totalQueued, avgDwell, avgCongestion };
+  }, [filteredPorts]);
+
+  const handleDownloadCsv = () => {
+    const headers = [
+      'Port_ID',
+      'Port_Name',
+      'Country',
+      'Corridor',
+      'Active_Vessels',
+      'Anchored_Queue',
+      'Avg_Dwell_Hours',
+      'Congestion_Index',
+      'Status',
+      'Dominant_Vessel_Class',
+      'Annual_TEU_Millions',
+    ];
+
+    const rows = filteredPorts.map((p) => [
+      p.id,
+      `"${p.name}"`,
+      p.country,
+      p.corridor,
+      p.activeVessels,
+      p.anchoredQueue,
+      p.avgDwellHours,
+      p.congestionIndex,
+      `"${p.status}"`,
+      p.dominantVesselClass,
+      p.annualTeuMillions,
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'poc30_global_vessel_telemetry.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-sky-500/30">
+      {/* Top Intelligence Header */}
+      <header className="border-b border-slate-800/80 bg-[#0B1117]/90 backdrop-blur sticky top-0 z-20 px-6 py-4">
+        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-sky-400">
+              <Navigation className="w-3.5 h-3.5" />
+              <span>REAL RAILS // MARITIME & SUPPLY CHAIN INTELLIGENCE (POC-30)</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
+              Global Vessel Telemetry & Port Congestion Monitor
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-mono">
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              AIS SATELLITE FEED LIVE
+            </span>
+            <span className="hidden md:inline-block text-slate-400">
+              NODES: {filteredPorts.length} MAJOR HUBS
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main 70 / 30 Split Workspace */}
+      <main className="max-w-[1600px] mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT 70% DATA & VISUALIZATION COLUMN (8 cols on 12-col grid) */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* 4 KPI Telemetry Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-4">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>ACTIVE VESSELS</span>
+                <Ship className="w-4 h-4 text-sky-400" />
+              </div>
+              <div className="text-2xl font-mono font-bold text-white mt-2">
+                {metrics.totalVessels.toLocaleString()}
+              </div>
+              <div className="text-[11px] text-sky-400 mt-1 font-mono">
+                In-port & approach zones
+              </div>
+            </div>
+
+            <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-4">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>ANCHORED QUEUE</span>
+                <Anchor className="w-4 h-4 text-rose-400" />
+              </div>
+              <div className="text-2xl font-mono font-bold text-rose-400 mt-2">
+                {metrics.totalQueued}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">
+                Awaiting berth allocation
+              </div>
+            </div>
+
+            <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-4">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>AVG DWELL TIME</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl font-mono font-bold text-white mt-2">
+                {metrics.avgDwell} <span className="text-sm font-normal text-slate-400">hrs</span>
+              </div>
+              <div className="text-[11px] text-amber-400 mt-1 font-mono">
+                Turnaround benchmark
+              </div>
+            </div>
+
+            <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-4">
+              <div className="flex items-center justify-between text-slate-400 text-xs">
+                <span>CONGESTION INDEX</span>
+                <AlertTriangle className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-mono font-bold text-white mt-2">
+                {metrics.avgCongestion}
+                <span className="text-sm font-normal text-slate-400">/100</span>
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1 font-mono">
+                Weighted bottleneck score
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Geospatial Map Container */}
+          <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-white">
+                  Global Maritime Chokepoints & Port Congestion Telemetry
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Circle radius scaled by active vessel volume • Click any port node for berth & dwell breakdown
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] font-mono">
+                <span className="flex items-center gap-1.5 text-rose-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Severe
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Moderate
+                </span>
+                <span className="flex items-center gap-1.5 text-sky-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-400" /> Normal
+                </span>
+              </div>
+            </div>
+
+            <PortCongestionMap ports={filteredPorts} />
+          </div>
+
+          {/* Bottom Split: Fleet Mix Share + Maritime Event Timeline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Vessel Class Mix Distribution */}
+            <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-5">
+              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-sky-400 mb-3">
+                <Activity className="w-4 h-4" />
+                <span>Global Fleet Telemetry Share</span>
+              </div>
+              <div className="space-y-4">
+                {VESSEL_MIX_SHARE.map((item) => (
+                  <div key={item.label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-300">{item.label}</span>
+                      <span className="font-mono font-bold text-white">{item.share}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${item.color} rounded-full`}
+                        style={{ width: `${item.share}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Maritime Dispatch & Port Advisory Timeline */}
+            <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-5">
+              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-sky-400 mb-3">
+                <Globe className="w-4 h-4" />
+                <span>Maritime Dispatch & Port Advisories</span>
+              </div>
+              <div className="space-y-3">
+                {MARITIME_EVENTS.map((evt) => (
+                  <div
+                    key={evt.id}
+                    className="border-l-2 border-sky-500/60 pl-3 py-0.5 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-white">{evt.port}</span>
+                      <span className="font-mono text-[10px] text-slate-400">{evt.time}</span>
+                    </div>
+                    <div className="text-sky-400 font-medium text-[11px]">{evt.type}</div>
+                    <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
+                      {evt.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT 30% INTELLIGENCE & CONTROL SIDEBAR (4 cols on 12-col grid) */}
+        <aside className="lg:col-span-4 space-y-6">
+          {/* Interactive Filter Controls */}
+          <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-5 space-y-4">
+            <div className="text-xs font-mono uppercase tracking-wider text-sky-400">
+              Telemetry Filters & Levers
+            </div>
+
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">
+                Maritime Trade Corridor
+              </label>
+              <select
+                value={selectedCorridor}
+                onChange={(e) => setSelectedCorridor(e.target.value)}
+                className="w-full bg-[#030712] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-400"
+              >
+                <option value="All">All Global Corridors</option>
+                <option value="Asia-Pacific">Asia-Pacific</option>
+                <option value="Europe-Med">Europe & Mediterranean</option>
+                <option value="North America">Americas & Trans-Pacific</option>
+                <option value="Middle East">Middle East & Red Sea</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs text-slate-400 mb-1.5">
+                Dominant Vessel Class
+              </label>
+              <select
+                value={selectedVesselClass}
+                onChange={(e) => setSelectedVesselClass(e.target.value)}
+                className="w-full bg-[#030712] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-400"
+              >
+                <option value="All">All Vessel Classes</option>
+                <option value="Container">Container Ships</option>
+                <option value="Bulk Carrier">Bulk Carriers</option>
+                <option value="Tanker">Crude & LNG Tankers</option>
+                <option value="Ro-Ro">Ro-Ro Vessels</option>
+              </select>
+            </div>
+
+            <button
+              onClick={handleDownloadCsv}
+              className="w-full mt-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-sm py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              Download Sample Data (CSV)
+            </button>
+          </div>
+
+          {/* Intelligence Narrative: Why This Matters */}
+          <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-5 space-y-2.5">
+            <div className="text-xs font-mono uppercase tracking-wider text-sky-400">
+              Why This Matters
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Over <span className="text-white font-semibold">80% of global merchandise trade</span> moves by sea. Even a 24-hour anchorage delay at major transshipment hubs like Shanghai, Singapore, or Rotterdam triggers cascading inventory shortages, freight rate spikes, and manufacturing bottlenecks downstream.
+            </p>
+          </div>
+
+          {/* Governance Narrative: Who Controls The Rail */}
+          <div className="bg-[#0B1117] border border-slate-800 rounded-xl p-5 space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-sky-400">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Who Controls The Rail</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Vessel movements are governed by the <span className="text-white font-semibold">International Maritime Organization (IMO)</span> AIS transponder mandates, regional <span className="text-white font-semibold">Port Authorities</span> (berth slot allocation & pilotage), and national <span className="text-white font-semibold">Customs & Border Agencies</span> clearing manifest cargo.
+            </p>
+          </div>
+        </aside>
+      </main>
+    </div>
+  );
+}
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  cacheComponents: true,
+  partialPrefetching: true,
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
+  },
+};
+
+export default nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "poc-30-global-vessel-telemetry",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@types/leaflet": "^1.9.22",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.72.0",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-leaflet": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="README.md">
+# POC-30: Global Vessel Telemetry & Port Congestion Monitor
+
+Real Rails Batch 8 — Phase 1 Intelligence Asset
+
+## Overview
+An interactive maritime supply chain and port congestion intelligence dashboard built with Next.js, TypeScript, Tailwind CSS, and React-Leaflet. Tracks active vessel counts, anchorage queues, average dwell times, and congestion scores across major global transshipment hubs.
+
+## Architecture Summary
+- **Data Layer (`app/portsData.ts`):** Typed maritime hub telemetry, fleet class distributions, and port dispatch advisories.
+- **Geospatial Engine (`app/PortCongestionMap.tsx`):** Client-isolated Leaflet map rendering proportional circle markers color-coded by congestion severity.
+- **Intelligence Dashboard (`app/page.tsx`):** 70/30 layout pairing real-time KPI cards and interactive visualizations with corridor/vessel-class levers, regulatory context, and CSV export.
+
+## Local Setup
+```bash
+npm install
+npm run dev
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+</files>
