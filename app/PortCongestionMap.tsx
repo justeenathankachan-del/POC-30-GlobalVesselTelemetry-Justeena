@@ -1,15 +1,21 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import { PortFacility } from './portsData';
+import React, { useEffect, useState } from "react";
+import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import { PortFacility } from "./portsData";
 
 interface PortCongestionMapProps {
   ports: PortFacility[];
+  selectedPort: PortFacility | null;
+  onSelectPort: (port: PortFacility) => void;
 }
 
-export default function PortCongestionMap({ ports }: PortCongestionMapProps) {
+export default function PortCongestionMap({
+  ports,
+  selectedPort,
+  onSelectPort,
+}: PortCongestionMapProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -18,94 +24,73 @@ export default function PortCongestionMap({ ports }: PortCongestionMapProps) {
 
   if (!mounted) {
     return (
-      <div className="w-full h-[430px] bg-[#0B1117] border border-slate-800 rounded-xl flex items-center justify-center text-slate-400 text-sm font-mono">
-        Initializing Global AIS Maritime Telemetry Layer...
+      <div className="w-full h-full bg-[#050D1A] flex items-center justify-center text-cyan-400 text-xs font-mono">
+        Initializing Full-Screen Global AIS Maritime Telemetry Stage...
       </div>
     );
   }
 
-  const getMarkerColor = (status: PortFacility['status']) => {
-    if (status === 'Severe Congestion') return '#F43F5E'; // Rose/Red
-    if (status === 'Moderate Delay') return '#F59E0B'; // Amber
-    return '#38BDF8'; // Electric Cyan
+  const getMarkerColor = (status: PortFacility["status"]) => {
+    if (status === "Severe Congestion") return "#F43F5E"; // Coral / Rose Alert
+    if (status === "Moderate Delay") return "#F59E0B"; // Amber Delay
+    return "#06B6D4"; // Electric Cyan Normal Flow
   };
 
   return (
-    <div className="w-full h-[430px] rounded-xl overflow-hidden border border-slate-800 relative z-0">
-      <MapContainer
-        center={[18, 25]}
-        zoom={2}
-        minZoom={2}
-        scrollWheelZoom={true}
-        className="w-full h-full bg-[#030712]"
-      >
-        {/* Native Dark Basemap with English-Only Labels (No API Key Required) */}
-        <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-          attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
-        />
-        <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-          attribution=''
-        />
+    <MapContainer
+      center={[18, 15]}
+      zoom={2}
+      minZoom={2}
+      zoomControl={false}
+      scrollWheelZoom={true}
+      style={{ height: "100%", width: "100%", background: "#050D1A" }}
+      className="z-0"
+    >
+      <TileLayer
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        attribution="Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+      />
+      <TileLayer
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+        attribution=""
+      />
 
-        {ports.map((port) => {
-          const color = getMarkerColor(port.status);
-          const radius = Math.max(9, Math.min(20, port.activeVessels / 16));
+      {ports.map((port) => {
+        const isSelected = selectedPort?.id === port.id;
+        const color = getMarkerColor(port.status);
+        const radius = Math.max(6, Math.min(11, port.activeVessels / 28));
 
-          return (
-            <CircleMarker
-              key={port.id}
-              center={[port.lat, port.lng]}
-              radius={radius}
-              pathOptions={{
-                color: color,
-                fillColor: color,
-                fillOpacity: 0.75,
-                weight: 2.5,
-              }}
-            >
-              <Popup>
-                <div className="min-w-[220px] text-slate-900 font-sans p-1">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    {port.id} • {port.corridor}
-                  </div>
-                  <div className="text-sm font-bold text-slate-950 mt-0.5">
-                    {port.name}
-                  </div>
-                  <div className="text-xs text-slate-600 mb-2">{port.country}</div>
-
-                  <div className="grid grid-cols-2 gap-1.5 text-xs border-t border-slate-200 pt-2">
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Active Vessels</span>
-                      <span className="font-mono font-bold">{port.activeVessels}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Anchored Queue</span>
-                      <span className="font-mono font-bold text-rose-600">
-                        {port.anchoredQueue} ships
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Avg Dwell Time</span>
-                      <span className="font-mono font-bold">{port.avgDwellHours} hrs</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">Congestion Index</span>
-                      <span className="font-mono font-bold">{port.congestionIndex}/100</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500">Primary Class:</span>
-                    <span className="font-semibold">{port.dominantVesselClass}</span>
-                  </div>
+        return (
+          <CircleMarker
+            key={port.id}
+            center={[port.lat, port.lng]}
+            radius={isSelected ? radius + 3.5 : radius}
+            pathOptions={{
+              color: isSelected ? "#FFFFFF" : color,
+              fillColor: color,
+              fillOpacity: isSelected ? 0.98 : 0.85,
+              weight: isSelected ? 2.5 : 1.75,
+            }}
+            eventHandlers={{
+              click: () => onSelectPort(port),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
+              <div className="text-xs font-sans">
+                <div className="font-bold text-slate-900">
+                  {port.name} ({port.id})
                 </div>
-              </Popup>
-            </CircleMarker>
-          );
-        })}
-      </MapContainer>
-    </div>
+                <div className="text-slate-700">
+                  {port.activeVessels} active vessels • {port.anchoredQueue} queued ({port.status})
+                </div>
+                <div className="text-[10px] text-cyan-700 font-semibold mt-0.5">
+                  Click port node for telemetry drawer →
+                </div>
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
+    </MapContainer>
   );
 }
